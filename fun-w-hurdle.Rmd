@@ -1,0 +1,103 @@
+---
+title: "Fun -w-Hurdle"
+author: "David J Jackson"
+date: "1/12/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(data.table)
+library(pscl)
+library(AER)
+library(countreg)
+```
+```{r}
+df <- fread("../db/kh_spots.csv")
+df$Ymd <- as.Date(df$Ymd)
+df$G <- df$g_n +df$g_s
+df$S <- df$s_n + df$s_s
+df <- df[,.(Ymd,S,G,R)]
+```
+
+
+```{r}
+data("NMES1988")
+# nmes <- NMES1988[, c(1, 6:8, 13, 15, 18)]
+nmes <- df[, c(1:4)]
+```
+```{r}
+plot(table(nmes$R))
+```
+```{r}
+sum(nmes$R < 1)
+sum(nmes$R > 50)
+```
+```{r}
+mod1 <- glm(R ~ ., data = nmes, family = "poisson")
+mod1
+```
+```{r}
+mu <- predict(mod1, type = "response")
+head(mu)
+```
+```{r}
+exp <- sum(dpois(x = 0, lambda = mu))
+head(exp)
+```
+
+
+```{r}
+round(exp)
+```
+```{r}
+sum(nmes$R < 1)
+```
+
+
+```{r}
+mod.hurdle <- hurdle(R ~ ., data = nmes)
+# mod.hurdle <- hurdle(R ~ ., data = nmes, dist = "poisson", zero.dist = "binomial")
+summary(mod.hurdle)
+```
+```{r}
+sum(predict(mod.hurdle, type = "prob")[,1])
+```
+```{r}
+predict(mod.hurdle, type = "response")[1:5]
+```
+```{r}
+predict(mod.hurdle, type = "zero")[1:5]
+```
+```{r}
+predict(mod.hurdle, type = "count")[1:5]
+```
+```{r}
+predict(mod.hurdle, type = "zero")[1:5] * predict(mod.hurdle, type = "count")[1:5]
+```
+```{r}
+predict(mod.hurdle, type = "response")[1:5]
+```
+```{r}
+rootogram(mod.hurdle, max = 80)
+```
+```{r}
+mod.hurdle.nb <- hurdle(visits ~ ., data = nmes, dist = "negbin")
+```
+```{r}
+rootogram(mod.hurdle.nb, max = 80) # fit up to count 80
+
+```
+```{r}
+AIC(mod.hurdle)
+AIC(mod.hurdle.nb)
+```
+```{r}
+mod.hurdle.nb2 <- hurdle(visits ~ . | gender + insurance, data = nmes, dist = "negbin")
+```
+```{r}
+rootogram(mod.hurdle.nb2, max = 80)
+```
+
+
+
